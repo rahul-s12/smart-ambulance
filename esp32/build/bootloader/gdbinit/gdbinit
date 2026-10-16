@@ -1,0 +1,2 @@
+source D:/Academ/git-local/smart-ambulance/esp32/build/bootloader/gdbinit/symbols
+source D:/Academ/git-local/smart-ambulance/esp32/build/bootloader/gdbinit/connect
