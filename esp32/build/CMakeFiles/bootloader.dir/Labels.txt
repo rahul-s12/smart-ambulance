@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+D:/Academ/git-local/smart-ambulance/esp32/build/CMakeFiles/bootloader
+D:/Academ/git-local/smart-ambulance/esp32/build/CMakeFiles/bootloader.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/CMakeFiles/bootloader-complete.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+D:/Academ/git-local/smart-ambulance/esp32/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
