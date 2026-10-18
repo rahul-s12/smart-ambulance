@@ -1,6 +1,5 @@
 # ESP-IDF / CMake generated output
 build/
-components/ble/build/
 managed_components/
 sdkconfig.old
 

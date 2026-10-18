@@ -95,5 +95,7 @@ int ble_publish_vitals(const ble_vitals_t *reading)
     if (reading == NULL) return BLE_HS_EINVAL;
     if (!ble_is_connected()) return BLE_HS_ENOTCONN;
     if (!ble_notifications_enabled()) return BLE_HS_EAGAIN;
-    return ble_gatt_publish_reading(reading);
+    int result = ble_gatt_publish_reading(reading);
+    if (result != 0) ESP_LOGE(tag, "Could not publish telemetry (result=%d)", result);
+    return result;
 }
