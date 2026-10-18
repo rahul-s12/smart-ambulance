@@ -1,9 +1,0 @@
-
-
-# Load bootloader symbols
-set confirm off
-    add-symbol-file D:/Academ/git-local/smart-ambulance/esp32/build/bootloader/bootloader.elf
-set confirm on
-
-# Load application symbols
-file D:/Academ/git-local/smart-ambulance/esp32/build/smart_ambulance_firmware.elf

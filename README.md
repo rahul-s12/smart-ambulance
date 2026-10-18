@@ -7,7 +7,7 @@ The initial version uses commonly available sensors and generated scenarios to s
 ## System flow
 
 1. The ESP32 reads available sensors or generates configured demonstration values.
-2. Firmware displays local readings on an OLED and sends telemetry over BLE.
+2. Firmware displays local readings on an OLED and sends telemetry over BLE using Bluetooth SIG standard GATT services and characteristics, rather than a project-specific custom service.
 3. The phone application receives readings, adds phone GPS when available, and buffers data for upload.
 4. The application uploads through MQTT as the primary transport, with CoAP planned as a fallback. Both require internet connectivity; offline readings remain queued on the phone.
 5. Cloud services validate and store telemetry, process results, and deliver updates to the phone and hospital dashboard.
@@ -55,8 +55,8 @@ The component folders are starting points, not initialized applications. Each fo
 
 | Folder | Owns |
 | --- | --- |
-| [esp32](esp32/README.md) | Input acquisition, simulation mappings, local reading quality, OLED output, BLE packets |
-| [app](app/README.md) | BLE reception, session association, GPS enrichment, persistent upload queue, MQTT/CoAP selection, phone status display |
+| [esp32](esp32/README.md) | Input acquisition, simulation mappings, local reading quality, OLED output, and standard BLE GATT publication |
+| [app](app/README.md) | Standard-GATT BLE reception, session association, GPS enrichment, persistent upload queue, MQTT/CoAP selection, phone status display |
 | [cloud](cloud/README.md) | Message validation, deduplication, durable storage, processing, application acknowledgments, client updates |
 | [dashboard](dashboard/README.md) | Hospital-facing session views, readings, trends, location, alerts, and freshness indicators |
 | [docs](docs/README.md) | Team-authored requirements, interface agreements, setup instructions, and verification procedures |
