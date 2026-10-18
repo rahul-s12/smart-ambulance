@@ -1,6 +1,7 @@
 {
     "C_Cpp.default.compilerPath": "C:/Espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/bin/riscv32-esp-elf-gcc.exe",
     "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "idf.buildPath": "${workspaceFolder}/build",
     "idf.currentSetup": "C:\\esp\\v6.0.2\\esp-idf",
     "idf.flashType": "UART",
     "idf.port": "COM15",
@@ -8,6 +9,6 @@
     "clangd.arguments": [
       "--background-index",
       "--query-driver=**",
-      "--compile-commands-dir=d:\\Academ\\git-local\\smart-ambulance\\esp32\\build"
+      "--compile-commands-dir=d:\\Academ\\git-local\\smart-ambulance\\esp32/build"
     ]
 }

@@ -1,0 +1,13 @@
+# ESP-IDF / CMake generated output
+build/
+managed_components/
+sdkconfig.old
+
+# Local IDE and language-server state
+.vscode/
+.clangd
+compile_commands.json
+
+# Local flashing and monitor output
+*.log
+monitor*.txt
