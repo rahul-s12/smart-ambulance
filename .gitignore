@@ -1,0 +1,31 @@
+# Backend and dashboard dependencies / builds
+cloud/node_modules/
+cloud/dist/
+cloud/coverage/
+dashboard/node_modules/
+dashboard/dist/
+dashboard/build/
+dashboard/.vite/
+dashboard/coverage/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+cloud/.env
+cloud/.env.*
+!cloud/.env.example
+dashboard/.env
+dashboard/.env.*
+!dashboard/.env.example
+
+# Runtime data and logs
+*.log
+logs/
+cloud/data/
+
+# Local editor / operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
