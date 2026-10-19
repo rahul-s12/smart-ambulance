@@ -223,6 +223,34 @@ class _GatewayPageState extends State<GatewayPage> {
     }
   }
 
+  Future<void> _disconnect() async {
+    final device = _device;
+    if (device == null) return;
+
+    setState(() => _status = 'Disconnecting from Smart_Ambulance…');
+    try {
+      if (_streaming && _control != null) {
+        try {
+          await _control!.write([0x02], withoutResponse: false);
+        } catch (_) {
+          _addEvent('Telemetry stop could not be acknowledged before disconnecting.');
+        }
+      }
+      await device.disconnect();
+      if (mounted) {
+        setState(() {
+          _streaming = false;
+          _observations = null;
+          _control = null;
+          _device = null;
+          _status = 'Disconnected. You can scan again.';
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _status = 'Disconnect failed: $error');
+    }
+  }
+
   void _handleControlResponse(List<int> value) {
     if (value.isEmpty || !mounted) return;
     if (value.first == 0x80) {
@@ -313,6 +341,12 @@ class _GatewayPageState extends State<GatewayPage> {
               const SizedBox(width: 12),
               Expanded(child: OutlinedButton.icon(onPressed: _streaming ? () => _writeControl(0x02) : null, icon: const Icon(Icons.stop), label: const Text('Stop'))),
             ]),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _disconnect,
+              icon: const Icon(Icons.link_off),
+              label: const Text('Disconnect from Smart_Ambulance'),
+            ),
           ],
           const SizedBox(height: 24),
           Text('Gateway events', style: Theme.of(context).textTheme.titleMedium),
