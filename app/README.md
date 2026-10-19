@@ -24,4 +24,19 @@ Sensor acquisition and OLED control belong to `esp32/`. Durable server storage a
 
 ## Current state
 
-No Flutter project or runnable application is present yet. `.gitkeep` preserves the planned component location and may remain until initialization.
+An Android Flutter project is present. The first implemented screen is a BLE gateway for the ESP32 demonstration firmware:
+
+- scans for the Generic Health Sensor Service (`0x1840`);
+- connects to `Smart_Ambulance`, discovers `0x2B8B` and `0x2BF4`, and enables their notification / indication subscriptions;
+- sends `0x01` to start telemetry and `0x02` to stop it; and
+- decodes the simulated heart-rate, SpO2, and temperature observations for display.
+
+## Run the BLE gateway
+
+1. Install Android Studio and its Android SDK, then run `flutter doctor` until the Android toolchain is available.
+2. Connect an Android phone with developer mode and USB debugging enabled, or use an Android emulator with Bluetooth support where available.
+3. From this folder, run `flutter pub get` and then `flutter run`.
+4. Start the ESP32 firmware, tap **Scan for Smart_Ambulance**, select the device, and complete the phone pairing prompt.
+5. Tap **Start telemetry**. The app enables the required GATT subscriptions before sending the `0x01` command.
+
+Cloud upload, local persistence, session records, and GPS enrichment remain future work.
