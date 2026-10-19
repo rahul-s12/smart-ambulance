@@ -1,0 +1,77 @@
+[
+  {
+    "text": "Project Work Phase-2       \u000b7th semester  AY: 2026-27\nReview 2 Presentation \rProject Title: Enhancing Emergency Response Through IoT-Integrated \t\t     Smart Ambulance and GPS Monitoring\r\rPresented By\rRahul S (1NT23EC120)\rRakshita S Wagge (1NT23EC124)\r            \r               Project Supervisor \t\r            Dr. Manjula B M\r              Professor\rDept. of Electronics and Communication Engineering\r         Nitte Meenakshi Institute of Technology, Yelahanka, Bangalore-560064\r\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru                                                                                                                                                                                             1                     ",
+    "shapes": 4,
+    "slide": 1
+  },
+  {
+    "text": "Presentation Outline\nObjectives\r​Detailed Architecture & Design Finalization\rTechniques/methods/approaches used for the proposed work\r​Functional Requirements \r​Non-Functional Requirements\rCorresponding Test Scenarios \rTest Cases  to validate each requirement\rConclusion and Future Work\r\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru                                                                                                                                                                                             2                     ",
+    "shapes": 3,
+    "slide": 2
+  },
+  {
+    "text": "Project Objectives\nThe following are the Finalized objectives of the project:\r1. To develop a BLE-based mobile communication backbone for transmitting real-time patient vitals to a mobile application, which securely forwards data to the cloud using MQTT over TLS, with CoAP as a backup.\r2. To integrate the existing patient health monitoring system with the mobile communication backbone for continuous vital acquisition, transmission, and remote monitoring during ambulance transit.\r3. To implement RTOS-based concurrent task management for sensor acquisition, vital processing, communication, and local display, ensuring responsive and reliable operation.\r4. To develop an ML-based patient risk prediction module that analyses real-time vitals, identifies potential deterioration, and classifies patient risk levels for early clinical assessment.\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru                                                                                                                                                                                             8                     ",
+    "shapes": 3,
+    "slide": 3
+  },
+  {
+    "text": "Architecture\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru                                                                                                                                                                                             8                     ",
+    "shapes": 3,
+    "slide": 4
+  },
+  {
+    "text": "BLE Communication Workflow\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nScan for\rSmart_Ambulance\nConnect and\rencrypt link\nDiscover GHSS\rand subscribe\nSend Start\rcommand 0x01\nReceive simulated\rvital observations\nDecode and display\rHR, SpO2, temperature\nAfter subscription, the app enables start/stop control\nStop: 0x02     Disconnect: ESP32 resumes advertising     Reconnect: scan and select again\n5",
+    "shapes": 16,
+    "slide": 5
+  },
+  {
+    "text": "Methods and Design Comparison\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nBLE supports the local link. Cloud transports require phone internet connectivity.\n6",
+    "shapes": 5,
+    "slide": 6
+  },
+  {
+    "text": "Functional Requirements\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\n7",
+    "shapes": 4,
+    "slide": 7
+  },
+  {
+    "text": "Non-Functional Requirements\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nLatency, endurance and reliability thresholds remain proposed until measured and agreed.\n8",
+    "shapes": 5,
+    "slide": 8
+  },
+  {
+    "text": "Wi-Fi vs BLE: Design Rationale\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nBLE fits the phone gateway design. Phone proximity remains a requirement.\n9",
+    "shapes": 5,
+    "slide": 9
+  },
+  {
+    "text": "BLE Test Cases\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nExecution status: evidence pending. Capture the observed outcome before marking Pass.\n10",
+    "shapes": 5,
+    "slide": 10
+  },
+  {
+    "text": "Planned Integration Tests\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nAll cases on this slide are planned. No cloud, GPS, ETA or ML results are claimed.\n11",
+    "shapes": 5,
+    "slide": 11
+  },
+  {
+    "text": "Implementation Status\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\n12",
+    "shapes": 4,
+    "slide": 12
+  },
+  {
+    "text": "Prototype Evidence\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nConnected and ready\nScreenshot pending\nSimulated vitals streaming\nScreenshot pending\nStopped or reconnected\nScreenshot pending\nUse real device captures. Pair the app display with matching ESP32 serial logs.\n13",
+    "shapes": 10,
+    "slide": 13
+  },
+  {
+    "text": "Conclusion and Future Work\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\n14\nImplemented ESP32 BLE communication and a Flutter app for simulated vitals.\rSupported device discovery, encrypted connection and start/stop control.\rIntegrate physical sensors, OLED and the full RTOS task pipeline.\rAdd persistent uploads, cloud services and the hospital dashboard.\rDevelop GPS tracking, ETA estimation and ML risk prediction.",
+    "shapes": 4,
+    "slide": 14
+  },
+  {
+    "text": "\nDept. of Electronics and Communication Engineering, NMIT, Bengaluru\nThank You\n15",
+    "shapes": 4,
+    "slide": 15
+  }
+]

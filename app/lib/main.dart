@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'gateway_view.dart';
+
 final _healthService = Guid('1840');
 final _liveObservations = Guid('2B8B');
 final _controlPoint = Guid('2BF4');
@@ -20,14 +22,11 @@ class SmartAmbulanceApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Smart Ambulance',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff00695c)),
-          useMaterial3: true,
-        ),
-        home: const GatewayPage(),
-      );
+    title: 'Smart Ambulance',
+    debugShowCheckedModeBanner: false,
+    theme: gatewayTheme,
+    home: const GatewayPage(),
+  );
 }
 
 class GatewayPage extends StatefulWidget {
@@ -49,6 +48,11 @@ class _GatewayPageState extends State<GatewayPage> {
   BluetoothCharacteristic? _observations;
   BluetoothCharacteristic? _control;
   bool _scanning = false;
+  bool _scanCompleted = false;
+  bool _disconnecting = false;
+  bool _controlPending = false;
+  Timer? _controlFeedbackTimer;
+  String? _selectedId;
   bool _connecting = false;
   bool _streaming = false;
   String _status = 'Ready to scan for Smart_Ambulance';
@@ -71,6 +75,7 @@ class _GatewayPageState extends State<GatewayPage> {
 
   @override
   void dispose() {
+    _controlFeedbackTimer?.cancel();
     _scanSubscription?.cancel();
     _connectionSubscription?.cancel();
     _observationsSubscription?.cancel();
@@ -89,7 +94,8 @@ class _GatewayPageState extends State<GatewayPage> {
       Permission.bluetoothConnect,
       Permission.locationWhenInUse,
     ].request();
-    final granted = statuses[Permission.bluetoothScan]?.isGranted == true &&
+    final granted =
+        statuses[Permission.bluetoothScan]?.isGranted == true &&
         statuses[Permission.bluetoothConnect]?.isGranted == true;
     if (!granted && mounted) {
       setState(() => _status = 'Bluetooth permission is required to scan.');
@@ -98,27 +104,41 @@ class _GatewayPageState extends State<GatewayPage> {
   }
 
   Future<void> _scan() async {
-    if (!await _requestPermissions()) return;
-    // adapterStateNow begins as `unknown` until the Android plugin has read
-    // the adapter. Await the stream's first value instead of misreporting it
-    // as Bluetooth being off.
-    final adapterState = await FlutterBluePlus.adapterState.first;
-    if (adapterState != BluetoothAdapterState.on) {
-      setState(() => _status = _adapterStateMessage(adapterState));
-      return;
-    }
-    await FlutterBluePlus.stopScan();
-    setState(() {
-      _devices.clear();
-      _scanning = true;
-      _status = 'Scanning for Generic Health Sensor Service…';
-    });
+    if (_scanning || _connecting || _disconnecting) return;
+    setState(() => _scanning = true);
     try {
+      if (!await _requestPermissions()) return;
+      // adapterStateNow begins as `unknown` until the Android plugin has read
+      // the adapter. Await the stream's first value instead of misreporting it
+      // as Bluetooth being off.
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (!mounted) return;
+      if (adapterState != BluetoothAdapterState.on) {
+        setState(() => _status = _adapterStateMessage(adapterState));
+        return;
+      }
+      await FlutterBluePlus.stopScan();
+      if (!mounted) return;
+      setState(() {
+        _devices.clear();
+        _scanCompleted = false;
+        _scanning = true;
+        _status = 'Scanning for Generic Health Sensor Service…';
+      });
       await FlutterBluePlus.startScan(
         withServices: [_healthService],
         timeout: const Duration(seconds: 10),
       );
-      if (mounted) setState(() => _status = 'Scan complete. Select your ESP32.');
+      // startScan completes when scanning starts; observe the actual scan end.
+      await FlutterBluePlus.isScanning.firstWhere((active) => !active);
+      if (mounted && !_connecting) {
+        setState(() {
+          _scanCompleted = true;
+          _status = _devices.isEmpty
+              ? 'No matching devices found. Keep your ESP32 nearby and powered on.'
+              : 'Scan complete. Select your ESP32.';
+        });
+      }
     } catch (error) {
       if (mounted) setState(() => _status = 'Scan failed: $error');
     } finally {
@@ -127,33 +147,39 @@ class _GatewayPageState extends State<GatewayPage> {
   }
 
   String _adapterStateMessage(BluetoothAdapterState state) => switch (state) {
-        BluetoothAdapterState.unauthorized =>
-          'Nearby devices permission is not allowed. Enable it in App info.',
-        BluetoothAdapterState.unavailable =>
-          'Bluetooth is not available on this phone.',
-        BluetoothAdapterState.turningOn =>
-          'Bluetooth is turning on. Wait a moment and scan again.',
-        BluetoothAdapterState.turningOff =>
-          'Bluetooth is turning off. Turn it back on and scan again.',
-        BluetoothAdapterState.off => 'Turn on Bluetooth, then scan again.',
-        BluetoothAdapterState.unknown =>
-          'Bluetooth is still initialising. Wait a moment and scan again.',
-        BluetoothAdapterState.on => 'Bluetooth is ready.',
-      };
+    BluetoothAdapterState.unauthorized =>
+      'Nearby devices permission is not allowed. Enable it in App info.',
+    BluetoothAdapterState.unavailable =>
+      'Bluetooth is not available on this phone.',
+    BluetoothAdapterState.turningOn =>
+      'Bluetooth is turning on. Wait a moment and scan again.',
+    BluetoothAdapterState.turningOff =>
+      'Bluetooth is turning off. Turn it back on and scan again.',
+    BluetoothAdapterState.off => 'Turn on Bluetooth, then scan again.',
+    BluetoothAdapterState.unknown =>
+      'Bluetooth is still initialising. Wait a moment and scan again.',
+    BluetoothAdapterState.on => 'Bluetooth is ready.',
+  };
 
   Future<void> _connect(ScanResult result) async {
-    await FlutterBluePlus.stopScan();
-    await _connectionSubscription?.cancel();
-    await _observationsSubscription?.cancel();
-    await _controlSubscription?.cancel();
+    if (_connecting || _disconnecting) return;
     setState(() {
       _connecting = true;
-      _status = 'Connecting to ${result.device.platformName}…';
-      _streaming = false;
-      _observations = null;
-      _control = null;
+      _selectedId = result.device.remoteId.str;
     });
     try {
+      await FlutterBluePlus.stopScan();
+      await _connectionSubscription?.cancel();
+      await _observationsSubscription?.cancel();
+      await _controlSubscription?.cancel();
+      if (!mounted) return;
+      setState(() {
+        _connecting = true;
+        _status = 'Connecting to ${result.device.platformName}…';
+        _streaming = false;
+        _observations = null;
+        _control = null;
+      });
       await result.device.connect(
         license: License.nonprofit,
         timeout: const Duration(seconds: 15),
@@ -162,6 +188,8 @@ class _GatewayPageState extends State<GatewayPage> {
       _connectionSubscription = _device!.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected && mounted) {
           setState(() {
+            _controlFeedbackTimer?.cancel();
+            _controlPending = false;
             _streaming = false;
             _observations = null;
             _control = null;
@@ -191,15 +219,21 @@ class _GatewayPageState extends State<GatewayPage> {
       return;
     }
     for (final characteristic in healthService.characteristics) {
-      if (characteristic.uuid == _liveObservations) _observations = characteristic;
+      if (characteristic.uuid == _liveObservations) {
+        _observations = characteristic;
+      }
       if (characteristic.uuid == _controlPoint) _control = characteristic;
     }
     if (_observations == null || _control == null) {
       setState(() => _status = 'GHSS is missing required characteristics.');
       return;
     }
-    _observationsSubscription = _observations!.lastValueStream.listen(_decodeObservation);
-    _controlSubscription = _control!.lastValueStream.listen(_handleControlResponse);
+    _observationsSubscription = _observations!.lastValueStream.listen(
+      _decodeObservation,
+    );
+    _controlSubscription = _control!.lastValueStream.listen(
+      _handleControlResponse,
+    );
     await _observations!.setNotifyValue(true);
     await _control!.setNotifyValue(true);
     if (mounted) {
@@ -210,35 +244,57 @@ class _GatewayPageState extends State<GatewayPage> {
 
   Future<void> _writeControl(int command) async {
     final control = _control;
-    if (control == null) return;
+    if (control == null || _controlPending || _disconnecting) return;
+    setState(() => _controlPending = true);
+    _controlFeedbackTimer?.cancel();
+    _controlFeedbackTimer = Timer(const Duration(seconds: 10), () {
+      if (!mounted || !_controlPending) return;
+      setState(() {
+        _controlPending = false;
+        _status = 'No control acknowledgement received. You can retry.';
+      });
+    });
     try {
       await control.write([command], withoutResponse: false);
-      if (mounted) {
-        setState(() => _status = command == 0x01
-            ? 'Start command sent; waiting for acknowledgement…'
-            : 'Stop command sent; waiting for acknowledgement…');
+      if (mounted && _controlPending) {
+        setState(
+          () => _status = command == 0x01
+              ? 'Start command sent; waiting for acknowledgement…'
+              : 'Stop command sent; waiting for acknowledgement…',
+        );
       }
     } catch (error) {
-      if (mounted) setState(() => _status = 'Control command failed: $error');
+      _controlFeedbackTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _controlPending = false;
+          _status = 'Control command failed: $error';
+        });
+      }
     }
   }
 
   Future<void> _disconnect() async {
     final device = _device;
-    if (device == null) return;
+    if (device == null || _disconnecting) return;
 
+    setState(() => _disconnecting = true);
     setState(() => _status = 'Disconnecting from Smart_Ambulance…');
     try {
       if (_streaming && _control != null) {
         try {
           await _control!.write([0x02], withoutResponse: false);
         } catch (_) {
-          _addEvent('Telemetry stop could not be acknowledged before disconnecting.');
+          _addEvent(
+            'Telemetry stop could not be acknowledged before disconnecting.',
+          );
         }
       }
       await device.disconnect();
       if (mounted) {
         setState(() {
+          _controlFeedbackTimer?.cancel();
+          _controlPending = false;
           _streaming = false;
           _observations = null;
           _control = null;
@@ -248,17 +304,25 @@ class _GatewayPageState extends State<GatewayPage> {
       }
     } catch (error) {
       if (mounted) setState(() => _status = 'Disconnect failed: $error');
+    } finally {
+      if (mounted) setState(() => _disconnecting = false);
     }
   }
 
   void _handleControlResponse(List<int> value) {
     if (value.isEmpty || !mounted) return;
+    _controlFeedbackTimer?.cancel();
+    setState(() => _controlPending = false);
     if (value.first == 0x80) {
       setState(() {
         _streaming = !_streaming;
         _status = _streaming ? 'Telemetry streaming' : 'Telemetry stopped';
       });
-      _addEvent(_streaming ? 'ESP32 accepted start command.' : 'ESP32 accepted stop command.');
+      _addEvent(
+        _streaming
+            ? 'ESP32 accepted start command.'
+            : 'ESP32 accepted stop command.',
+      );
     } else {
       _addEvent('Control response: ${_hex(value)}');
     }
@@ -285,14 +349,19 @@ class _GatewayPageState extends State<GatewayPage> {
   }
 
   int _uint32(List<int> data, int offset) =>
-      data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
+      data[offset] |
+      (data[offset + 1] << 8) |
+      (data[offset + 2] << 16) |
+      (data[offset + 3] << 24);
 
   int _int24(List<int> data, int offset) {
-    final value = data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16);
+    final value =
+        data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16);
     return value & 0x800000 == 0 ? value : value - 0x1000000;
   }
 
-  String _hex(List<int> value) => value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(' ');
+  String _hex(List<int> value) =>
+      value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(' ');
 
   void _addEvent(String event) {
     if (!mounted) return;
@@ -303,123 +372,34 @@ class _GatewayPageState extends State<GatewayPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final connected = _device != null && _observations != null;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Smart Ambulance'),
-        actions: [
-          IconButton(onPressed: _scanning || _connecting ? null : _scan, icon: const Icon(Icons.bluetooth_searching)),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _StatusCard(status: _status, connected: connected, streaming: _streaming),
-          const SizedBox(height: 16),
-          if (!connected) ...[
-            FilledButton.icon(
-              onPressed: _scanning || _connecting ? null : _scan,
-              icon: Icon(_scanning ? Icons.hourglass_top : Icons.search),
-              label: Text(_scanning ? 'Scanning…' : 'Scan for Smart_Ambulance'),
-            ),
-            const SizedBox(height: 12),
-            ..._devices.map((result) => Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.monitor_heart_outlined),
-                    title: Text(result.device.platformName.isEmpty ? 'Unnamed health sensor' : result.device.platformName),
-                    subtitle: Text('${result.device.remoteId.str}  •  ${result.rssi} dBm'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _connecting ? null : () => _connect(result),
-                  ),
-                )),
-          ] else ...[
-            _VitalsGrid(heartRate: _heartRate, spo2: _spo2, temperature: _temperature),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: FilledButton.icon(onPressed: _streaming ? null : () => _writeControl(0x01), icon: const Icon(Icons.play_arrow), label: const Text('Start telemetry'))),
-              const SizedBox(width: 12),
-              Expanded(child: OutlinedButton.icon(onPressed: _streaming ? () => _writeControl(0x02) : null, icon: const Icon(Icons.stop), label: const Text('Stop'))),
-            ]),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _disconnect,
-              icon: const Icon(Icons.link_off),
-              label: const Text('Disconnect from Smart_Ambulance'),
-            ),
-          ],
-          const SizedBox(height: 24),
-          Text('Gateway events', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (_events.isEmpty) const Text('No BLE events yet.') else ..._events.map((event) => ListTile(dense: true, leading: const Icon(Icons.check_circle_outline, size: 18), title: Text(event))),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusCard extends StatelessWidget {
-  const _StatusCard({required this.status, required this.connected, required this.streaming});
-  final String status;
-  final bool connected;
-  final bool streaming;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = streaming ? Colors.green : connected ? Colors.orange : Colors.blueGrey;
-    return Card(
-      color: color.withValues(alpha: 0.12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(children: [
-          Icon(streaming ? Icons.sensors : Icons.bluetooth, color: color),
-          const SizedBox(width: 12),
-          Expanded(child: Text(status)),
-        ]),
-      ),
-    );
-  }
-}
-
-class _VitalsGrid extends StatelessWidget {
-  const _VitalsGrid({required this.heartRate, required this.spo2, required this.temperature});
-  final int? heartRate;
-  final int? spo2;
-  final double? temperature;
-
-  @override
-  Widget build(BuildContext context) => GridView.count(
-        crossAxisCount: 3,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: .82,
-        children: [
-          _VitalTile(label: 'Heart rate', value: heartRate?.toString() ?? '—', unit: 'bpm', icon: Icons.favorite),
-          _VitalTile(label: 'SpO₂', value: spo2?.toString() ?? '—', unit: '%', icon: Icons.bloodtype),
-          _VitalTile(label: 'Temperature', value: temperature?.toStringAsFixed(2) ?? '—', unit: '°C', icon: Icons.thermostat),
-        ],
-      );
-}
-
-class _VitalTile extends StatelessWidget {
-  const _VitalTile({required this.label, required this.value, required this.unit, required this.icon});
-  final String label;
-  final String value;
-  final String unit;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(label, textAlign: TextAlign.center, style: Theme.of(context).textTheme.labelMedium),
-            const SizedBox(height: 4),
-            Text(value, style: Theme.of(context).textTheme.headlineSmall),
-            Text(unit, style: Theme.of(context).textTheme.labelSmall),
-          ]),
+  Widget build(BuildContext context) => GatewayView(
+    status: _status,
+    connected: _device != null && _observations != null,
+    scanning: _scanning,
+    connecting: _connecting,
+    disconnecting: _disconnecting,
+    streaming: _streaming,
+    controlPending: _controlPending,
+    scanCompleted: _scanCompleted,
+    deviceName: _device?.platformName,
+    deviceId: _device?.remoteId.str,
+    selectedId: _selectedId,
+    heartRate: _heartRate,
+    spo2: _spo2,
+    temperature: _temperature,
+    events: _events,
+    devices: [
+      for (final result in _devices)
+        GatewayDevice(
+          name: result.device.platformName,
+          id: result.device.remoteId.str,
+          rssi: result.rssi,
+          onConnect: () => _connect(result),
         ),
-      );
+    ],
+    onScan: _scan,
+    onStart: () => _writeControl(0x01),
+    onStop: () => _writeControl(0x02),
+    onDisconnect: _disconnect,
+  );
 }
