@@ -1,6 +1,6 @@
 # Hospital Dashboard
 
-This folder is the starting point for the hospital-facing web application. It presents ambulance session information and cloud processing results to hospital staff.
+Local hospital-facing dashboard for the Smart Ambulance cloud telemetry feed.
 
 ## Responsibilities
 
@@ -13,15 +13,19 @@ This folder is the starting point for the hospital-facing web application. It pr
 
 The backend owns ingestion, durable storage, and authoritative processing. The dashboard owns presentation and user interaction.
 
-## How to use this folder
+## Run locally
 
-1. Review the agreed session, telemetry, result, and freshness definitions in `../docs/`.
-2. Select the web framework and initialize it in this existing folder when dashboard development begins.
-3. Document dependency installation, backend connection configuration, and exact development/build commands here.
-4. Build the initial view with synthetic responses, then connect it to the backend's history and live-update interfaces.
-5. Verify normal readings, missing values, delayed history, connection loss, and stale location without relying on a running ESP32.
-6. Confirm the UI clearly identifies simulated data and does not present an unavailable prediction or ETA as a valid result.
+1. Start the cloud service from `../cloud` with `npm start`.
+2. In this folder, run `npm start`.
+3. Open `http://localhost:5173`.
 
-## Current state
+The dashboard proxies requests to `http://localhost:3000`, so the browser only communicates with the local dashboard origin. Use `API_ORIGIN` to change the backend target when needed.
 
-No dashboard framework or runnable web application is initialized yet. Localhost development does not require a cloud deployment. `.gitkeep` preserves this component location.
+## Current dashboard behavior
+
+- Displays MongoDB-backed simulated readings and live server-sent updates.
+- Shows heart rate, SpO₂, temperature, reading history, and a trend chart.
+- Makes unavailable location, ETA, alerts, and ML results explicit. It does not create placeholder clinical values.
+- Shows connection and storage state, with error feedback when the cloud service is unavailable.
+
+No third-party dependencies are required.
