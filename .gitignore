@@ -1,0 +1,18 @@
+# Local environment settings and dependencies
+.env
+.env.*
+!.env.example
+node_modules/
+
+# Flutter and Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# IDE and operating-system metadata
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
