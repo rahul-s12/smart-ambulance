@@ -11,6 +11,8 @@ dashboard/coverage/
 
 # Local configuration and secrets
 .pptx
+.presentation-build/
+reports/
 .env
 .env.*
 !.env.example
