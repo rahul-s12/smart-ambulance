@@ -1,0 +1,14 @@
+{
+  "name": "smart-ambulance-cloud",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --env-file=.env --watch src/index.js",
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check src/server.js && node --check src/store.js && node --check src/telemetry.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": { "mongodb": "^6.21.0" }
+}

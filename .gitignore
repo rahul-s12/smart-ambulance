@@ -1,4 +1,5 @@
 # Backend and dashboard dependencies / builds
+node_modules/
 cloud/node_modules/
 cloud/dist/
 cloud/coverage/
@@ -9,6 +10,7 @@ dashboard/.vite/
 dashboard/coverage/
 
 # Local configuration and secrets
+.pptx
 .env
 .env.*
 !.env.example
@@ -18,6 +20,12 @@ cloud/.env.*
 dashboard/.env
 dashboard/.env.*
 !dashboard/.env.example
+
+# Flutter and Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
 
 # Runtime data and logs
 *.log
@@ -29,3 +37,4 @@ cloud/data/
 Thumbs.db
 .idea/
 .vscode/
+*.iml
