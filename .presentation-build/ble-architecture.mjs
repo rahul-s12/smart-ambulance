@@ -1,0 +1,25 @@
+import fs from 'node:fs/promises';
+import {Presentation,PresentationFile} from '@oai/artifact-tool';
+const root='D:/Academ/git-local/smart-ambulance/.presentation-build';
+const p=Presentation.create({slideSize:{width:1280,height:720}}),s=p.slides.add();
+const navy='#002060',blue='#0070C0';
+function box(t,x,y,w,h,size=30,fill='none',color=navy,bold=false){const q=s.shapes.add({geometry:fill==='none'?'textbox':'rect',name:t.slice(0,50),position:{left:x,top:y,width:w,height:h},fill,line:{fill:fill==='none'?'none':navy,width:fill==='none'?0:1.5}});q.text=t;q.text.style={typeface:'Times New Roman',fontSize:size,color,bold,alignment:'center',verticalAlignment:'middle'};q.text.insets=8;return q;}
+box('BLE Architecture: Flutter to ESP32',0,0,1280,80,52,navy,'#FFFFFF',true);
+box('Generic Health Sensor Service (GHSS): 0x1840',80,105,1120,50,32,'none',navy,true);
+box('Flutter app\nBLE central / GATT client',55,165,320,80,30,'none',blue,true);
+box('Encrypted BLE connection',480,165,320,80,30,'none',blue,true);
+box('ESP32\nBLE peripheral / GATT server',905,165,320,80,30,'none',blue,true);
+const a=box('Start / Stop\ncommands',55,275,320,115,31,'#EDF3F9',navy,true);
+const b=box('GHS Control Point\n0x2BF4\nWrite and indicate',480,275,320,115,29,'#EDF3F9',navy,true);
+const c=box('Validate command\nEnable / disable\ntelemetry stream',905,275,320,115,29,'#EDF3F9',navy,true);
+const d=box('Decode and display\nHR, SpO2, temperature',55,465,320,115,29,'#EDF3F9',navy,true);
+const e=box('Live Observations\n0x2B8B\nNotifications',480,465,320,115,29,'#EDF3F9',navy,true);
+const f=box('Simulated vitals task\nEncode observations',905,465,320,115,29,'#EDF3F9',navy,true);
+for(const [from,to,left] of [[a,b,false],[b,c,false],[f,e,true],[e,d,true]])s.shapes.connect(from,to,{kind:'straight',fromSide:left?'left':'right',toSide:left?'right':'left',line:{fill:navy,width:2},tail:{type:'arrow',width:'med',length:'med'}});
+box('ESP32 returns command acknowledgements through control-point indications',80,403,1120,45,27,'none',blue);
+box('Setup: scan, connect, pair, discover GHSS and subscribe',70,615,1140,43,29,'none',blue);
+box('Dept. of Electronics and Communication Engineering, NMIT, Bengaluru',0,681.67,1280,38.33,16,navy,'#FFFFFF',true);
+s.speakerNotes.text='Architecture of the implemented ESP32-to-phone BLE prototype. The Flutter app is the BLE central/GATT client. ESP32 advertises as Smart_Ambulance and hosts GHSS 0x1840. App start 0x01 and stop 0x02 commands use control point 0x2BF4. Firmware requires link encryption and subscribed indications, validates the command, sets stream state, and indicates acknowledgement 0x80. The simulated-vitals task emits heart rate, SpO2 and temperature observations through notifications on 0x2B8B. Physical sensor integration is planned. Sources: current app/lib/main.dart and esp32/components/ble/ble.c, ble_gap.c, ble_gatt.c.';
+await (await PresentationFile.exportPptx(p)).save(root+'/ble-architecture.pptx');
+await fs.writeFile(root+'/ble-architecture.png',new Uint8Array(await (await p.export({slide:s,format:'png',scale:1})).arrayBuffer()));
+console.log('Created editable BLE architecture slide');

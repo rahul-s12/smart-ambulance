@@ -29,7 +29,8 @@ static void simulated_vitals_task(void *parameter)
     (void)parameter;
     uint16_t sequence = 0;
     uint8_t phase = 0;
-    for (;;) {
+    for (;;)
+    {
         const ble_vitals_t vitals = {
             .timestamp_ms = (uint32_t)(esp_timer_get_time() / 1000),
             .sequence = sequence++,
@@ -48,16 +49,19 @@ static void simulated_vitals_task(void *parameter)
 void ble_init(void)
 {
     esp_err_t result = nvs_flash_init();
-    if (result == ESP_ERR_NVS_NO_FREE_PAGES || result == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    if (result == ESP_ERR_NVS_NO_FREE_PAGES || result == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
         ESP_ERROR_CHECK(nvs_flash_erase());
         result = nvs_flash_init();
     }
-    if (result != ESP_OK) {
+    if (result != ESP_OK)
+    {
         ESP_LOGE(tag, "NVS initialisation failed: %s", esp_err_to_name(result));
         return;
     }
     result = nimble_port_init();
-    if (result != ESP_OK) {
+    if (result != ESP_OK)
+    {
         ESP_LOGE(tag, "NimBLE initialisation failed: %s", esp_err_to_name(result));
         return;
     }
@@ -70,13 +74,15 @@ void ble_init(void)
     ble_store_config_init();
 
     if (ble_svc_gap_device_name_set(BLE_DEVICE_NAME) != 0 ||
-        ble_gatt_init() != 0) {
+        ble_gatt_init() != 0)
+    {
         ESP_LOGE(tag, "Could not initialise GATT database");
         return;
     }
     smart_ble_gap_init();
     if (xTaskCreate(simulated_vitals_task, "ble_vitals", 3072, NULL,
-                    tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
+                    tskIDLE_PRIORITY + 1, NULL) != pdPASS)
+    {
         ESP_LOGE(tag, "Could not create simulated-vitals task");
         return;
     }
@@ -92,10 +98,14 @@ bool ble_notifications_enabled(void)
 
 int ble_publish_vitals(const ble_vitals_t *reading)
 {
-    if (reading == NULL) return BLE_HS_EINVAL;
-    if (!ble_is_connected()) return BLE_HS_ENOTCONN;
-    if (!ble_notifications_enabled()) return BLE_HS_EAGAIN;
+    if (reading == NULL)
+        return BLE_HS_EINVAL;
+    if (!ble_is_connected())
+        return BLE_HS_ENOTCONN;
+    if (!ble_notifications_enabled())
+        return BLE_HS_EAGAIN;
     int result = ble_gatt_publish_reading(reading);
-    if (result != 0) ESP_LOGE(tag, "Could not publish telemetry (result=%d)", result);
+    if (result != 0)
+        ESP_LOGE(tag, "Could not publish telemetry (result=%d)", result);
     return result;
 }

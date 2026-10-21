@@ -1,8 +1,25 @@
-# Local environment settings and dependencies
+# Backend and dashboard dependencies / builds
+node_modules/
+cloud/node_modules/
+cloud/dist/
+cloud/coverage/
+dashboard/node_modules/
+dashboard/dist/
+dashboard/build/
+dashboard/.vite/
+dashboard/coverage/
+
+# Local configuration and secrets
+.pptx
 .env
 .env.*
 !.env.example
-node_modules/
+cloud/.env
+cloud/.env.*
+!cloud/.env.example
+dashboard/.env
+dashboard/.env.*
+!dashboard/.env.example
 
 # Flutter and Dart generated files
 .dart_tool/
@@ -10,9 +27,14 @@ node_modules/
 .flutter-plugins-dependencies
 build/
 
-# IDE and operating-system metadata
-.idea/
-*.iml
-.vscode/
+# Runtime data and logs
+*.log
+logs/
+cloud/data/
+
+# Local editor / operating-system files
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.iml

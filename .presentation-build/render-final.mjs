@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {FileBlob,PresentationFile} from '@oai/artifact-tool';
+const root='D:/Academ/git-local/smart-ambulance';
+const final=root+'/output/Smart_Ambulance_Review_2_Final.pptx';
+const bytes=await fs.readFile(final),draft=await fs.readFile(root+'/.presentation-build/draft.pptx');
+if(!bytes.equals(draft))throw Error('Final/draft mismatch');
+console.log('Final verified',createHash('sha256').update(bytes).digest('hex'));
+const p=await PresentationFile.importPptx(await FileBlob.load(final));
+for(let i=0;i<p.slides.items.length;i++)await fs.writeFile(root+`/.presentation-build/final-${i+1}.png`,new Uint8Array(await (await p.export({slide:p.slides.items[i],format:'png',scale:1})).arrayBuffer()));
+console.log('Rendered all',p.slides.items.length);
