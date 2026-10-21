@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -179,6 +180,7 @@ class _GatewayPageState extends State<GatewayPage> {
         _streaming = false;
         _observations = null;
         _control = null;
+        _clearVitalReadings();
       });
       await result.device.connect(
         license: License.nonprofit,
@@ -193,15 +195,49 @@ class _GatewayPageState extends State<GatewayPage> {
             _streaming = false;
             _observations = null;
             _control = null;
+            _clearVitalReadings();
+            _device = null;
             _status = 'Disconnected. You can scan again.';
           });
         }
       });
+      await _pairBeforeTelemetry(result.device);
       await _discoverHealthService();
     } catch (error) {
+      await _disconnectAfterConnectionFailure(result.device);
       if (mounted) setState(() => _status = 'Connection failed: $error');
     } finally {
       if (mounted) setState(() => _connecting = false);
+    }
+  }
+
+  /// The ESP32 keeps its control point encrypted. Request the Android bond as
+  /// soon as the user chooses the device, rather than waiting for Start
+  /// telemetry to trigger Android's automatic pairing prompt.
+  Future<void> _pairBeforeTelemetry(BluetoothDevice device) async {
+    if (!Platform.isAndroid) return;
+    if (mounted) {
+      setState(() => _status = 'Pairing with ${device.platformName}…');
+    }
+    await device.createBond(timeout: 30);
+  }
+
+  Future<void> _disconnectAfterConnectionFailure(BluetoothDevice device) async {
+    try {
+      await device.disconnect();
+    } catch (_) {
+      // A failed connection may already be disconnected.
+    }
+    if (mounted) {
+      setState(() {
+        _controlFeedbackTimer?.cancel();
+        _controlPending = false;
+        _streaming = false;
+        _observations = null;
+        _control = null;
+        _clearVitalReadings();
+        _device = null;
+      });
     }
   }
 
@@ -298,6 +334,7 @@ class _GatewayPageState extends State<GatewayPage> {
           _streaming = false;
           _observations = null;
           _control = null;
+          _clearVitalReadings();
           _device = null;
           _status = 'Disconnected. You can scan again.';
         });
@@ -346,6 +383,12 @@ class _GatewayPageState extends State<GatewayPage> {
       }
       _status = 'Telemetry streaming';
     });
+  }
+
+  void _clearVitalReadings() {
+    _heartRate = null;
+    _spo2 = null;
+    _temperature = null;
   }
 
   int _uint32(List<int> data, int offset) =>

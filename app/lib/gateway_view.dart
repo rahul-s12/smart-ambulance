@@ -414,7 +414,7 @@ class _Header extends StatelessWidget {
           color: _blue,
           borderRadius: BorderRadius.circular(13),
         ),
-        child: const Icon(Icons.add_rounded, color: _ink, size: 32),
+        child: const Icon(Icons.emergency_rounded, color: _ink, size: 27),
       ),
       const SizedBox(width: 12),
       const Expanded(
@@ -763,10 +763,8 @@ class _VitalTile extends StatelessWidget {
   final bool primary;
   @override
   Widget build(BuildContext context) {
-    final foreground = primary
-        ? const Color(0xff122f52)
-        : const Color(0xffedf3fc);
-    final secondary = primary ? const Color(0xff405b79) : _muted;
+    const foreground = Color(0xffedf3fc);
+    const secondary = _muted;
     return Semantics(
       label:
           '$label: ${value == '—' ? 'No reading yet' : '$value $unit'}. Simulated data.',
@@ -775,9 +773,9 @@ class _VitalTile extends StatelessWidget {
         width: double.infinity,
         padding: EdgeInsets.all(primary ? 24 : 18),
         decoration: BoxDecoration(
-          color: primary ? const Color(0xffd6e6ff) : _surface,
+          color: _surface,
           borderRadius: BorderRadius.circular(primary ? 24 : 20),
-          border: primary ? null : Border.all(color: _line),
+          border: Border.all(color: _line),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,7 +796,7 @@ class _VitalTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 Icon(
                   icon,
-                  color: primary ? const Color(0xff315f96) : _blue,
+                  color: _blue,
                   size: primary ? 25 : 20,
                 ),
               ],
