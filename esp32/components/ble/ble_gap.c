@@ -31,9 +31,15 @@ static int gap_event(struct ble_gap_event *event, void *argument)
         if (event->connect.status == 0)
         {
             connection_handle = event->connect.conn_handle;
-            int result = ble_gap_security_initiate(connection_handle);
-            ESP_LOGI(tag, "Client connected (handle=%u); security request result=%d",
-                     connection_handle, result);
+            /*
+             * Do not initiate pairing from the ESP32. The Android app requests
+             * bonding after its GATT connection is established. Initiating from
+             * both sides can display two pairing / connection requests for one
+             * user action. The encrypted GATT permission keeps telemetry
+             * control protected while leaving the client as the bonding owner.
+             */
+            ESP_LOGI(tag, "Client connected (handle=%u); waiting for encrypted control access",
+                     connection_handle);
         }
         else
         {

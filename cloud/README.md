@@ -1,6 +1,6 @@
 # Cloud Processing
 
-This folder is the starting point for the backend that accepts telemetry from the phone and provides stored readings and processing results to clients. It can run locally during development; a hosting provider has not been selected.
+This is the local MongoDB-backed test backend for the hospital dashboard. It generates one clearly labelled simulated ambulance reading per second, stores it in MongoDB, and exposes current, historical, and live-stream endpoints. It does not yet receive readings from the Flutter application.
 
 ## Responsibilities
 
@@ -14,15 +14,33 @@ This folder is the starting point for the backend that accepts telemetry from th
 
 Training and evaluation code may be placed in this existing folder when that work begins. Keep its execution and dependencies distinct from the running ingestion path; a model is not required for the first telemetry milestone.
 
-## How to use this folder
+## Run locally
 
-1. Review the requirements and interface agreements in `../docs/`.
-2. Select the backend runtime, database, broker, and client update mechanism, then document the decisions before initialization.
-3. Add implementation files here and record dependency installation, local service startup, configuration, and run commands in this README.
-4. Connect one MQTT ingestion path to validation and storage, then expose stored readings to the dashboard.
-5. Verify reading identity, durable acceptance, duplicates, delayed messages, and invalid payload handling using synthetic examples.
-6. Add CoAP to the same processing path and verify that switching transports cannot create duplicate records or repeated alert events.
-7. Add processing capabilities incrementally with reproducible inputs and expected results.
+1. Run `npm install` in this folder.
+2. Copy `.env.example` to `.env` and add your own `MONGODB_URI`.
+3. Run `npm start`.
+
+The service starts at `http://localhost:3000` unless `PORT` is changed. It generates telemetry immediately. If Atlas is unavailable, it runs in `memory-fallback` mode and retries MongoDB every 15 seconds. The `/health` response reports `storage: "memory-fallback"` until MongoDB reconnects; this mode is for local dashboard testing only and is not durable.
+
+If Node reports `querySrv ECONNREFUSED` while using a `mongodb+srv://` URI, set `MONGODB_DNS_SERVER=1.1.1.1` in `.env`. This bypasses a local DNS resolver that rejects the Atlas SRV lookup; it does not route database traffic through Cloudflare.
+
+The backend defaults to IPv4 (`MONGODB_IP_FAMILY=4`) because recent Node releases can otherwise prefer IPv6. Set it explicitly in your existing `.env` if it is not already present.
+
+## Test endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Confirms the backend and generator status. |
+| `GET /api/ambulances` | Lists ambulances with their latest reading time. |
+| `GET /api/ambulances/SIM-AMB-001/latest` | Returns the newest simulated reading. |
+| `GET /api/ambulances/SIM-AMB-001/readings?limit=30` | Returns recent simulated readings. |
+| `GET /api/stream` | Server-sent event stream for dashboard live updates. |
+
+`POST /api/telemetry` already validates the same reading shape for the later app-to-cloud integration. The current test backend accepts only readings with `source.type: "simulation"` to prevent the dashboard from mistaking a test feed for real data.
+
+The local API permits browser requests without credentials so the local hospital dashboard can use a separate development port. Restrict allowed origins before any non-local deployment.
+
+Run `npm test` to verify schema validation and the API using the in-memory test store. This checks the logic without a MongoDB URI; add your URI and start the service to verify persistence against your cluster.
 
 ## Configuration
 
@@ -30,4 +48,4 @@ Document required configuration names when implemented. Keep actual credentials,
 
 ## Current state
 
-No backend, database, broker configuration, or model is initialized yet. `.gitkeep` preserves the planned component location.
+MongoDB is the selected test storage. MQTT, CoAP, authentication, the phone upload client, GPS, ETA, alerts, and ML remain outside this test backend.
