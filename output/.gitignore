@@ -1,0 +1,4 @@
+# Keep this directory available for local output without tracking generated files.
+*
+!.gitignore
+!.gitkeep
