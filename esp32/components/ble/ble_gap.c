@@ -29,9 +29,15 @@ static int gap_event(struct ble_gap_event *event, void *argument)
     case BLE_GAP_EVENT_CONNECT:
         if (event->connect.status == 0) {
             connection_handle = event->connect.conn_handle;
-            int result = ble_gap_security_initiate(connection_handle);
-            ESP_LOGI(tag, "Client connected (handle=%u); security request result=%d",
-                     connection_handle, result);
+            /*
+             * Do not initiate pairing here. Android starts bonding itself when
+             * the client accesses the WRITE_ENC control-point characteristic.
+             * Starting it from both sides can display two pairing / connection
+             * requests for one user action. The encrypted GATT permission keeps
+             * telemetry control protected while leaving one owner for bonding.
+             */
+            ESP_LOGI(tag, "Client connected (handle=%u); waiting for encrypted control access",
+                     connection_handle);
         } else {
             ESP_LOGW(tag, "Connection attempt failed (status=%d); advertising again",
                      event->connect.status);
