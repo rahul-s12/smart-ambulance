@@ -14,6 +14,8 @@ GatewayView gatewayForTest({
   VoidCallback? onStart,
   VoidCallback? onStop,
   VoidCallback? onDisconnect,
+  Future<void> Function()? onStartLocation,
+  Future<void> Function()? onStopLocation,
 }) => GatewayView(
   status: streaming
       ? 'Telemetry streaming'
@@ -45,6 +47,10 @@ GatewayView gatewayForTest({
   onStart: onStart ?? () {},
   onStop: onStop ?? () {},
   onDisconnect: onDisconnect ?? () {},
+  locationStatus: 'Location tracking is off.',
+  locationTracking: false,
+  onStartLocation: onStartLocation ?? () async {},
+  onStopLocation: onStopLocation ?? () async {},
 );
 
 void main() {
@@ -131,7 +137,9 @@ void main() {
     );
     await show(streaming: true);
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Start'))
+          .onPressed,
       isNull,
     );
     await tester.ensureVisible(find.text('Stop'));
@@ -150,7 +158,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Please wait…'),
+          )
+          .onPressed,
       isNull,
     );
     expect(

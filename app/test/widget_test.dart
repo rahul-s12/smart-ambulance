@@ -73,7 +73,11 @@ void main() {
       await tester.tap(find.text('Find device'));
       await tester.pump();
       expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Scanning…'),
+            )
+            .onPressed,
         isNull,
       );
       expect(requests, 1);
@@ -84,7 +88,11 @@ void main() {
         findsOneWidget,
       );
       expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Find device'),
+            )
+            .onPressed,
         isNotNull,
       );
       expect(find.text('Streaming'), findsNothing);
