@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'speed_filter.dart';
+
 /// A phone position captured for ambulance-trip tracking.
 ///
 /// It deliberately keeps the location timestamp separate from BLE observation
@@ -16,14 +18,16 @@ class AmbulanceLocation {
     this.speedMetersPerSecond,
   });
 
-  factory AmbulanceLocation.fromPosition(Position position) =>
-      AmbulanceLocation(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracyMeters: position.accuracy,
-        capturedAt: position.timestamp,
-        speedMetersPerSecond: position.speed >= 0 ? position.speed : null,
-      );
+  factory AmbulanceLocation.fromPosition(
+    Position position, {
+    double? speedMetersPerSecond,
+  }) => AmbulanceLocation(
+    latitude: position.latitude,
+    longitude: position.longitude,
+    accuracyMeters: position.accuracy,
+    capturedAt: position.timestamp,
+    speedMetersPerSecond: speedMetersPerSecond,
+  );
 
   final double latitude;
   final double longitude;
@@ -38,6 +42,7 @@ class AmbulanceLocation {
 /// the cloud endpoint are implemented.
 class LocationTracker extends ChangeNotifier {
   StreamSubscription<Position>? _positionSubscription;
+  final _speedFilter = SpeedFilter();
 
   AmbulanceLocation? latest;
   String status = 'Location tracking is off.';
@@ -46,6 +51,7 @@ class LocationTracker extends ChangeNotifier {
 
   Future<void> start() async {
     if (isTracking) return;
+    _speedFilter.reset();
 
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
@@ -87,12 +93,16 @@ class LocationTracker extends ChangeNotifier {
   Future<void> stop() async {
     await _positionSubscription?.cancel();
     _positionSubscription = null;
+    _speedFilter.reset();
     status = 'Location tracking is off.';
     notifyListeners();
   }
 
   void _setPosition(Position position) {
-    latest = AmbulanceLocation.fromPosition(position);
+    latest = AmbulanceLocation.fromPosition(
+      position,
+      speedMetersPerSecond: _speedFilter.filter(position.speed),
+    );
     status = 'Location tracking';
     notifyListeners();
   }

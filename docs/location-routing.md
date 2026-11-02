@@ -14,6 +14,11 @@ The phone screen currently displays these fields and does not upload them:
 | `capturedAt` | Time at which the phone acquired the fix, separate from BLE observation time. |
 | `speedMetersPerSecond` | Phone-reported speed when available. |
 
+The app suppresses phone-reported speeds below 3 km/h and smooths faster
+values for display. This prevents stationary GPS drift from being presented as
+ambulance movement. The unfiltered location data is not uploaded in this
+milestone.
+
 ## Planned flow
 
 ```text
