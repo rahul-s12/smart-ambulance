@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'location/location_tracker.dart';
+import 'trip/trip_controller.dart';
+import 'trip/trip_panel.dart';
 
 const _ink = Color(0xff080f1a);
 const _surface = Color(0xff121e2e);
@@ -91,6 +93,10 @@ class GatewayView extends StatelessWidget {
     required this.onDisconnect,
     required this.onStartLocation,
     required this.onStopLocation,
+    required this.activeTrip,
+    required this.tripStatus,
+    required this.onStartTrip,
+    required this.onEndTrip,
     this.deviceName,
     this.deviceId,
     this.selectedId,
@@ -119,6 +125,10 @@ class GatewayView extends StatelessWidget {
   final List<String> events;
   final VoidCallback onScan, onStart, onStop, onDisconnect;
   final Future<void> Function() onStartLocation, onStopLocation;
+  final ActiveTrip? activeTrip;
+  final String tripStatus;
+  final ValueChanged<TripConfiguration> onStartTrip;
+  final VoidCallback onEndTrip;
 
   bool get busy => scanning || connecting || disconnecting;
   String get stateLabel => disconnecting
@@ -197,6 +207,13 @@ class GatewayView extends StatelessWidget {
                           ? _monitor(context)
                           : _connection(context),
                     ),
+                  const SizedBox(height: 24),
+                  TripPanel(
+                    activeTrip: activeTrip,
+                    status: tripStatus,
+                    onStart: onStartTrip,
+                    onEnd: onEndTrip,
+                  ),
                   const SizedBox(height: 24),
                   _LocationPanel(
                     location: location,

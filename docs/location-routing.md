@@ -2,7 +2,7 @@
 
 ## First milestone: phone location
 
-The Flutter gateway can collect foreground location from the ambulance phone independently of BLE telemetry. The operator explicitly starts tracking from the app. The app requests Android location permission only at that time and reports disabled location services, denied permission, and missing GPS fixes to the operator.
+The Flutter gateway can collect foreground location from the ambulance phone independently of BLE telemetry. Before a trip, the operator enters an ambulance ID and selects its assigned hospital. The selected hospital supplies its preconfigured ambulance-entrance coordinates, so drivers never enter coordinates. The app validates this configuration locally. The operator explicitly starts tracking from the app. The app requests Android location permission only at that time and reports disabled location services, denied permission, and missing GPS fixes to the operator.
 
 The phone screen currently displays these fields and does not upload them:
 
@@ -31,7 +31,7 @@ Each ambulance will have one assigned hospital and destination coordinates. The 
 
 ## Next milestones
 
-1. Add an ambulance and trip identity plus a configured hospital destination.
+1. Replace the temporary in-app hospital catalog with a destination assigned by the backend/dispatcher.
 2. Persist and upload location updates while preserving their original capture time.
 3. Calculate the remaining route, distance, and ETA through OSRM in the cloud service.
 4. Display route freshness, location freshness, ETA, and arrival status in the dashboard.

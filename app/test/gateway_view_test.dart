@@ -51,6 +51,10 @@ GatewayView gatewayForTest({
   locationTracking: false,
   onStartLocation: onStartLocation ?? () async {},
   onStopLocation: onStopLocation ?? () async {},
+  activeTrip: null,
+  tripStatus: 'No active trip. Configure the assigned hospital to begin.',
+  onStartTrip: (_) {},
+  onEndTrip: () {},
 );
 
 void main() {
@@ -83,7 +87,11 @@ void main() {
         expect(find.text('98'), findsOneWidget);
         expect(find.text('36.75'), findsOneWidget);
         expect(find.text('Simulated data'), findsOneWidget);
-        await tester.scrollUntilVisible(find.text('Disconnect'), 180);
+        await tester.scrollUntilVisible(
+          find.text('Disconnect'),
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
         expect(tester.takeException(), isNull);
       });
     }

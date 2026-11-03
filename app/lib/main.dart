@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'gateway_view.dart';
 import 'location/location_tracker.dart';
+import 'trip/trip_controller.dart';
 
 final _healthService = Guid('1840');
 final _liveObservations = Guid('2B8B');
@@ -42,6 +43,7 @@ class _GatewayPageState extends State<GatewayPage> {
   final _devices = <ScanResult>[];
   final _events = <String>[];
   final _locationTracker = LocationTracker();
+  final _tripController = TripController();
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   StreamSubscription<List<int>>? _observationsSubscription;
@@ -67,6 +69,7 @@ class _GatewayPageState extends State<GatewayPage> {
   void initState() {
     super.initState();
     _locationTracker.addListener(_onLocationChanged);
+    _tripController.addListener(_onTripChanged);
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
       if (!mounted) return;
       setState(() {
@@ -81,6 +84,9 @@ class _GatewayPageState extends State<GatewayPage> {
   void dispose() {
     _locationTracker
       ..removeListener(_onLocationChanged)
+      ..dispose();
+    _tripController
+      ..removeListener(_onTripChanged)
       ..dispose();
     _controlFeedbackTimer?.cancel();
     _scanSubscription?.cancel();
@@ -110,6 +116,10 @@ class _GatewayPageState extends State<GatewayPage> {
   }
 
   void _onLocationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onTripChanged() {
     if (mounted) setState(() {});
   }
 
@@ -458,5 +468,9 @@ class _GatewayPageState extends State<GatewayPage> {
     onDisconnect: _disconnect,
     onStartLocation: _locationTracker.start,
     onStopLocation: _locationTracker.stop,
+    activeTrip: _tripController.activeTrip,
+    tripStatus: _tripController.status,
+    onStartTrip: _tripController.start,
+    onEndTrip: _tripController.end,
   );
 }
