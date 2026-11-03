@@ -7,6 +7,8 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'gateway_view.dart';
+import 'location/location_tracker.dart';
+import 'trip/trip_controller.dart';
 
 final _healthService = Guid('1840');
 final _liveObservations = Guid('2B8B');
@@ -40,6 +42,8 @@ class GatewayPage extends StatefulWidget {
 class _GatewayPageState extends State<GatewayPage> {
   final _devices = <ScanResult>[];
   final _events = <String>[];
+  final _locationTracker = LocationTracker();
+  final _tripController = TripController();
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   StreamSubscription<List<int>>? _observationsSubscription;
@@ -64,6 +68,8 @@ class _GatewayPageState extends State<GatewayPage> {
   @override
   void initState() {
     super.initState();
+    _locationTracker.addListener(_onLocationChanged);
+    _tripController.addListener(_onTripChanged);
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
       if (!mounted) return;
       setState(() {
@@ -76,6 +82,12 @@ class _GatewayPageState extends State<GatewayPage> {
 
   @override
   void dispose() {
+    _locationTracker
+      ..removeListener(_onLocationChanged)
+      ..dispose();
+    _tripController
+      ..removeListener(_onTripChanged)
+      ..dispose();
     _controlFeedbackTimer?.cancel();
     _scanSubscription?.cancel();
     _connectionSubscription?.cancel();
@@ -93,7 +105,6 @@ class _GatewayPageState extends State<GatewayPage> {
     final statuses = await <Permission>[
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
-      Permission.locationWhenInUse,
     ].request();
     final granted =
         statuses[Permission.bluetoothScan]?.isGranted == true &&
@@ -102,6 +113,14 @@ class _GatewayPageState extends State<GatewayPage> {
       setState(() => _status = 'Bluetooth permission is required to scan.');
     }
     return granted;
+  }
+
+  void _onLocationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onTripChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _scan() async {
@@ -430,6 +449,9 @@ class _GatewayPageState extends State<GatewayPage> {
     heartRate: _heartRate,
     spo2: _spo2,
     temperature: _temperature,
+    location: _locationTracker.latest,
+    locationStatus: _locationTracker.status,
+    locationTracking: _locationTracker.isTracking,
     events: _events,
     devices: [
       for (final result in _devices)
@@ -444,5 +466,11 @@ class _GatewayPageState extends State<GatewayPage> {
     onStart: () => _writeControl(0x01),
     onStop: () => _writeControl(0x02),
     onDisconnect: _disconnect,
+    onStartLocation: _locationTracker.start,
+    onStopLocation: _locationTracker.stop,
+    activeTrip: _tripController.activeTrip,
+    tripStatus: _tripController.status,
+    onStartTrip: _tripController.start,
+    onEndTrip: _tripController.end,
   );
 }

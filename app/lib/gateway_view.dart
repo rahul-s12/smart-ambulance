@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'location/location_tracker.dart';
+import 'trip/trip_controller.dart';
+import 'trip/trip_panel.dart';
+
 const _ink = Color(0xff080f1a);
 const _surface = Color(0xff121e2e);
 const _line = Color(0xff29394d);
@@ -87,12 +91,21 @@ class GatewayView extends StatelessWidget {
     required this.onStart,
     required this.onStop,
     required this.onDisconnect,
+    required this.onStartLocation,
+    required this.onStopLocation,
+    required this.activeTrip,
+    required this.tripStatus,
+    required this.onStartTrip,
+    required this.onEndTrip,
     this.deviceName,
     this.deviceId,
     this.selectedId,
     this.heartRate,
     this.spo2,
     this.temperature,
+    this.location,
+    required this.locationStatus,
+    required this.locationTracking,
   });
   final String status;
   final bool connected,
@@ -105,9 +118,17 @@ class GatewayView extends StatelessWidget {
   final String? deviceName, deviceId, selectedId;
   final int? heartRate, spo2;
   final double? temperature;
+  final AmbulanceLocation? location;
+  final String locationStatus;
+  final bool locationTracking;
   final List<GatewayDevice> devices;
   final List<String> events;
   final VoidCallback onScan, onStart, onStop, onDisconnect;
+  final Future<void> Function() onStartLocation, onStopLocation;
+  final ActiveTrip? activeTrip;
+  final String tripStatus;
+  final ValueChanged<TripConfiguration> onStartTrip;
+  final VoidCallback onEndTrip;
 
   bool get busy => scanning || connecting || disconnecting;
   String get stateLabel => disconnecting
@@ -186,6 +207,21 @@ class GatewayView extends StatelessWidget {
                           ? _monitor(context)
                           : _connection(context),
                     ),
+                  const SizedBox(height: 24),
+                  TripPanel(
+                    activeTrip: activeTrip,
+                    status: tripStatus,
+                    onStart: onStartTrip,
+                    onEnd: onEndTrip,
+                  ),
+                  const SizedBox(height: 24),
+                  _LocationPanel(
+                    location: location,
+                    status: locationStatus,
+                    tracking: locationTracking,
+                    onStart: onStartLocation,
+                    onStop: onStopLocation,
+                  ),
                   if (events.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     _Activity(events: events),
@@ -397,6 +433,173 @@ class GatewayView extends StatelessWidget {
         ),
       ),
     ],
+  );
+}
+
+class _LocationPanel extends StatelessWidget {
+  const _LocationPanel({
+    required this.location,
+    required this.status,
+    required this.tracking,
+    required this.onStart,
+    required this.onStop,
+  });
+
+  final AmbulanceLocation? location;
+  final String status;
+  final bool tracking;
+  final Future<void> Function() onStart;
+  final Future<void> Function() onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final fix = location;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xff344c6d)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                tracking
+                    ? Icons.location_searching_rounded
+                    : Icons.location_off_outlined,
+                color: tracking ? _green : _muted,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Ambulance location',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                ),
+              ),
+              _LocationStateChip(tracking: tracking),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            status,
+            style: const TextStyle(color: _muted, fontSize: 12, height: 1.5),
+          ),
+          const SizedBox(height: 18),
+          if (fix == null)
+            const Text(
+              'Start tracking to show the phone’s GPS coordinates and accuracy.',
+              style: TextStyle(color: _muted, height: 1.5),
+            )
+          else
+            _LocationDetails(location: fix),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: tracking ? onStop : onStart,
+            icon: Icon(
+              tracking
+                  ? Icons.location_disabled_rounded
+                  : Icons.my_location_rounded,
+            ),
+            label: Text(
+              tracking ? 'Stop location tracking' : 'Start location tracking',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocationStateChip extends StatelessWidget {
+  const _LocationStateChip({required this.tracking});
+  final bool tracking;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = tracking ? _green : _muted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        tracking ? 'Tracking' : 'Off',
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+}
+
+class _LocationDetails extends StatelessWidget {
+  const _LocationDetails({required this.location});
+  final AmbulanceLocation location;
+
+  @override
+  Widget build(BuildContext context) {
+    final captured = TimeOfDay.fromDateTime(location.capturedAt.toLocal())
+        .format(context);
+    final speed = location.speedMetersPerSecond;
+    return Wrap(
+      spacing: 18,
+      runSpacing: 14,
+      children: [
+        _LocationValue(
+          label: 'Latitude',
+          value: location.latitude.toStringAsFixed(6),
+        ),
+        _LocationValue(
+          label: 'Longitude',
+          value: location.longitude.toStringAsFixed(6),
+        ),
+        _LocationValue(
+          label: 'Accuracy',
+          value: '±${location.accuracyMeters.round()} m',
+        ),
+        _LocationValue(label: 'Last fix', value: captured),
+        if (speed != null)
+          _LocationValue(
+            label: 'Speed',
+            value: '${(speed * 3.6).toStringAsFixed(1)} km/h',
+          ),
+      ],
+    );
+  }
+}
+
+class _LocationValue extends StatelessWidget {
+  const _LocationValue({required this.label, required this.value});
+  final String label, value;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 132,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: _muted,
+            fontSize: 10,
+            letterSpacing: 0.4,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+      ],
+    ),
   );
 }
 
@@ -794,11 +997,7 @@ class _VitalTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
-                  icon,
-                  color: _blue,
-                  size: primary ? 25 : 20,
-                ),
+                Icon(icon, color: _blue, size: primary ? 25 : 20),
               ],
             ),
             SizedBox(height: primary ? 24 : 18),

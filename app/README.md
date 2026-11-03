@@ -30,6 +30,10 @@ An Android Flutter project is present. The first implemented screen is a BLE gat
 - connects to `Smart_Ambulance`, discovers `0x2B8B` and `0x2BF4`, and enables their notification / indication subscriptions;
 - sends `0x01` to start telemetry and `0x02` to stop it; and
 - decodes the simulated heart-rate, SpO2, and temperature observations for display.
+- includes foreground phone-GPS tracking, displaying latitude, longitude, accuracy, speed when available, and latest-fix time.
+- includes local trip setup for an ambulance ID and assigned hospital. The
+  selected hospital provides its preconfigured ambulance-entrance coordinates;
+  drivers do not enter coordinates.
 
 ## Run the BLE gateway
 
@@ -39,4 +43,7 @@ An Android Flutter project is present. The first implemented screen is a BLE gat
 4. Start the ESP32 firmware, tap **Scan for Smart_Ambulance**, select the device, and complete the phone pairing prompt.
 5. Tap **Start telemetry**. The app enables the required GATT subscriptions before sending the `0x01` command.
 
-Cloud upload, local persistence, session records, and GPS enrichment remain future work.
+Cloud upload, local persistence, and routing remain future work. Start a trip
+by selecting the assigned hospital, then start the **Ambulance location** panel
+and grant location permission to collect a phone GPS fix; this information does
+not yet leave the device.
