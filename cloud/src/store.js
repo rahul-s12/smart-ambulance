@@ -12,8 +12,10 @@ export class MongoTelemetryStore {
   async connect() {
     await this.client.connect();
     this.readings = this.client.db(this.databaseName).collection('telemetry_readings');
+    this.locations = this.client.db(this.databaseName).collection('ambulance_locations');
     await this.readings.createIndex({ readingId: 1 }, { unique: true });
     await this.readings.createIndex({ ambulanceId: 1, observedAt: -1 });
+    await this.locations.createIndex({ ambulanceId: 1, capturedAt: -1 });
   }
 
   async close() { await this.client.close(); }
@@ -21,10 +23,12 @@ export class MongoTelemetryStore {
   async latest(ambulanceId) { return this.readings.findOne({ ambulanceId }, { sort: { observedAt: -1 }, projection: { _id: 0 } }); }
   async listAmbulances() { return this.readings.aggregate([{ $sort: { observedAt: -1 } }, { $group: { _id: '$ambulanceId', latestObservedAt: { $first: '$observedAt' } } }, { $project: { _id: 0, ambulanceId: '$_id', latestObservedAt: 1 } }]).toArray(); }
   async history(ambulanceId, limit) { return this.readings.find({ ambulanceId }, { projection: { _id: 0 } }).sort({ observedAt: -1 }).limit(limit).toArray(); }
+  async saveLocation(location) { await this.locations.insertOne(location); return location; }
+  async latestLocation(ambulanceId) { return this.locations.findOne({ ambulanceId }, { sort: { capturedAt: -1 }, projection: { _id: 0 } }); }
 }
 
 export class InMemoryTelemetryStore {
-  constructor() { this.items = []; }
+  constructor() { this.items = []; this.locations = []; }
   async connect() {}
   async close() {}
   async save(reading) { this.items.push(reading); return reading; }
@@ -34,6 +38,8 @@ export class InMemoryTelemetryStore {
       .map(({ ambulanceId, observedAt }) => ({ ambulanceId, latestObservedAt: observedAt }));
   }
   async history(ambulanceId, limit) { return this.items.filter((item) => item.ambulanceId === ambulanceId).slice(-limit).reverse(); }
+  async saveLocation(location) { this.locations.push(location); return location; }
+  async latestLocation(ambulanceId) { return this.locations.filter((item) => item.ambulanceId === ambulanceId).at(-1) ?? null; }
 }
 
 /**
@@ -100,6 +106,20 @@ export class ResilientTelemetryStore {
 
   async history(ambulanceId, limit) {
     return this.primaryAvailable ? this.primary.history(ambulanceId, limit) : this.fallback.history(ambulanceId, limit);
+  }
+
+  async saveLocation(location) {
+    await this.fallback.saveLocation(location);
+    if (!this.primaryAvailable) return location;
+    try { await this.primary.saveLocation(location); } catch (error) {
+      this.primaryAvailable = false;
+      this.reportPrimaryError(error);
+    }
+    return location;
+  }
+
+  async latestLocation(ambulanceId) {
+    return this.primaryAvailable ? this.primary.latestLocation(ambulanceId) : this.fallback.latestLocation(ambulanceId);
   }
 
   reportPrimaryError(error) {

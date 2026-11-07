@@ -1,6 +1,6 @@
 # Cloud Processing
 
-This is the local MongoDB-backed test backend for the hospital dashboard. It generates one clearly labelled simulated ambulance reading per second, stores it in MongoDB, and exposes current, historical, and live-stream endpoints. It does not yet receive readings from the Flutter application.
+This is the local MongoDB-backed backend for the hospital dashboard. It generates one clearly labelled simulated sensor reading per second and can also receive live GPS updates from the Flutter application. GPS locations are stored separately from test telemetry and can include an OSRM driving-route ETA to the ambulance's assigned hospital.
 
 ## Responsibilities
 
@@ -36,7 +36,32 @@ The backend defaults to IPv4 (`MONGODB_IP_FAMILY=4`) because recent Node release
 | `GET /api/ambulances/SIM-AMB-001/readings?limit=30` | Returns recent simulated readings. |
 | `GET /api/stream` | Server-sent event stream for dashboard live updates. |
 
-`POST /api/telemetry` already validates the same reading shape for the later app-to-cloud integration. The current test backend accepts only readings with `source.type: "simulation"` to prevent the dashboard from mistaking a test feed for real data.
+`POST /api/telemetry` validates the simulated sensor-reading shape. The current test backend accepts only readings with `source.type: "simulation"` to prevent the dashboard from mistaking a test feed for real data.
+
+## Mobile location and ETA
+
+The mobile app should send a GPS update while an active trip is running:
+
+`POST /api/ambulances/{ambulanceId}/location`
+
+```json
+{
+  "latitude": 12.9716,
+  "longitude": 77.5946,
+  "accuracyMeters": 8,
+  "speedMetersPerSecond": 4.2,
+  "capturedAt": "2026-11-03T10:00:00.000Z",
+  "destination": {
+    "hospitalName": "Assigned Hospital",
+    "latitude": 12.9352,
+    "longitude": 77.6245
+  }
+}
+```
+
+The response returns the accepted location plus `route` (`distanceMeters`, `durationSeconds`, `eta`) when OSRM routing is enabled. Retrieve the current enriched location through `GET /api/ambulances/{ambulanceId}/location`.
+
+Set `OSRM_BASE_URL` to a self-hosted OSRM server, for example `http://localhost:5000`. If it is unset, GPS is still stored but `route` is `null`. The service recalculates a route only after the vehicle moves 30 m, the destination changes, or 30 seconds pass. Do not use the public OSRM demo endpoint for production.
 
 The local API permits browser requests without credentials so the local hospital dashboard can use a separate development port. Restrict allowed origins before any non-local deployment.
 

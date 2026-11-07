@@ -1,6 +1,8 @@
 import http from 'node:http';
 import { EventEmitter } from 'node:events';
 import { validateReading } from './telemetry.js';
+import { createLocationRecord, validateLocationUpdate } from './location.js';
+import { createRouteCache } from './routing.js';
 
 const json = (response, status, body) => {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -13,8 +15,9 @@ const readJson = async (request) => {
   return JSON.parse(body || '{}');
 };
 
-export function createApi({ store, simulator }) {
+export function createApi({ store, simulator, routeService }) {
   const events = new EventEmitter();
+  const routes = createRouteCache({ routeService: routeService ?? { enabled: false } });
   events.setMaxListeners(0);
   const publish = async (reading) => {
     const errors = validateReading(reading);
@@ -46,12 +49,22 @@ export function createApi({ store, simulator }) {
         const limit = Number.isSafeInteger(requested) ? Math.min(Math.max(requested, 1), 100) : 30;
         return json(response, 200, { readings: await store.history(ambulanceId, limit), simulated: true });
       }
+      const locationMatch = url.pathname.match(/^\/api\/ambulances\/([^/]+)\/location$/);
+      if (request.method === 'GET' && locationMatch) {
+        const ambulanceId = decodeURIComponent(locationMatch[1]);
+        return json(response, 200, { location: await store.latestLocation(ambulanceId) });
+      }
       if (request.method === 'GET' && url.pathname === '/api/stream') {
         response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
         response.write(': Smart Ambulance simulated telemetry stream\n\n');
         const onReading = (reading) => response.write(`event: telemetry\ndata: ${JSON.stringify(reading)}\n\n`);
+        const onLocation = (location) => response.write(`event: location\ndata: ${JSON.stringify(location)}\n\n`);
         events.on('reading', onReading);
-        request.on('close', () => events.off('reading', onReading));
+        events.on('location', onLocation);
+        request.on('close', () => {
+          events.off('reading', onReading);
+          events.off('location', onLocation);
+        });
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/telemetry') {
@@ -60,6 +73,23 @@ export function createApi({ store, simulator }) {
         if (errors.length) return json(response, 422, { errors });
         await publish(reading);
         return json(response, 201, { accepted: true, readingId: reading.readingId });
+      }
+      if (request.method === 'POST' && locationMatch) {
+        const ambulanceId = decodeURIComponent(locationMatch[1]);
+        if (!ambulanceId.trim()) return json(response, 422, { errors: ['ambulanceId is required.'] });
+        const update = await readJson(request);
+        const errors = validateLocationUpdate(update);
+        if (errors.length) return json(response, 422, { errors });
+        let route = null;
+        try {
+          route = await routes.routeFor(ambulanceId, update, update.destination);
+        } catch (error) {
+          console.warn(`Could not calculate OSRM route for ${ambulanceId}: ${error.message}`);
+        }
+        const location = createLocationRecord({ ambulanceId, update, route });
+        await store.saveLocation(location);
+        events.emit('location', location);
+        return json(response, 201, { accepted: true, location });
       }
       return json(response, 404, { error: 'Not found' });
     } catch (error) {
