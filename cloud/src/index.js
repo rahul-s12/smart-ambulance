@@ -3,6 +3,7 @@ import { setServers } from 'node:dns';
 import { InMemoryTelemetryStore, MongoTelemetryStore, ResilientTelemetryStore } from './store.js';
 import { TelemetrySimulator } from './telemetry.js';
 import { createApi } from './server.js';
+import { createOsrmRouteService } from './routing.js';
 
 const required = (name) => {
   const value = process.env[name];
@@ -17,6 +18,7 @@ const config = {
   intervalMs: Number(process.env.SIMULATOR_INTERVAL_MS ?? 1000),
   ambulanceId: process.env.SIMULATOR_AMBULANCE_ID ?? 'SIM-AMB-001',
   ipFamily: Number(process.env.MONGODB_IP_FAMILY ?? 4),
+  osrmBaseUrl: process.env.OSRM_BASE_URL,
 };
 
 // Some Wi-Fi DNS resolvers reject SRV lookups used by mongodb+srv URIs.
@@ -31,12 +33,13 @@ const store = new ResilientTelemetryStore({
 });
 await store.connect();
 const simulator = new TelemetrySimulator({ ambulanceId: config.ambulanceId, intervalMs: config.intervalMs, publish: async () => {} });
-const { server, publish } = createApi({ store, simulator });
+const routeService = createOsrmRouteService({ baseUrl: config.osrmBaseUrl });
+const { server, publish } = createApi({ store, simulator, routeService });
 simulator.publish = publish;
 await new Promise((resolve) => server.listen(config.port, resolve));
 simulator.start();
 setInterval(() => { void store.reconnect(); }, 15000).unref();
-console.log(`Smart Ambulance simulated backend running at http://localhost:${config.port} using ${store.storage}.`);
+console.log(`Smart Ambulance backend running at http://localhost:${config.port} using ${store.storage}; OSRM routing is ${routeService.enabled ? 'enabled' : 'disabled'}.`);
 
 const stop = async () => {
   simulator.stop();
