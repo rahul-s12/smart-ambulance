@@ -13,8 +13,8 @@ class TripPanel extends StatefulWidget {
 
   final ActiveTrip? activeTrip;
   final String status;
-  final ValueChanged<TripConfiguration> onStart;
-  final VoidCallback onEnd;
+  final Future<void> Function(TripConfiguration) onStart;
+  final Future<void> Function() onEnd;
 
   @override
   State<TripPanel> createState() => _TripPanelState();
@@ -30,8 +30,8 @@ class _TripPanelState extends State<TripPanel> {
     super.dispose();
   }
 
-  void _start() {
-    widget.onStart(
+  Future<void> _start() async {
+    await widget.onStart(
       TripConfiguration(
         ambulanceId: _ambulanceId.text,
         destination: _destination,
@@ -164,7 +164,7 @@ class _TripPanelState extends State<TripPanel> {
         ),
         const SizedBox(height: 18),
         OutlinedButton.icon(
-          onPressed: widget.onEnd,
+          onPressed: () => widget.onEnd(),
           icon: const Icon(Icons.stop_rounded),
           label: const Text('End trip'),
         ),

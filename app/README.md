@@ -34,6 +34,8 @@ An Android Flutter project is present. The first implemented screen is a BLE gat
 - includes local trip setup for an ambulance ID and assigned hospital. The
   selected hospital provides its preconfigured ambulance-entrance coordinates;
   drivers do not enter coordinates.
+- uploads GPS during an active trip to the cloud location endpoint and displays
+  the server-calculated route distance, ETA, and arrival time when available.
 
 ## Run the BLE gateway
 
@@ -43,7 +45,18 @@ An Android Flutter project is present. The first implemented screen is a BLE gat
 4. Start the ESP32 firmware, tap **Scan for Smart_Ambulance**, select the device, and complete the phone pairing prompt.
 5. Tap **Start telemetry**. The app enables the required GATT subscriptions before sending the `0x01` command.
 
-Cloud upload, local persistence, and routing remain future work. Start a trip
-by selecting the assigned hospital, then start the **Ambulance location** panel
-and grant location permission to collect a phone GPS fix; this information does
-not yet leave the device.
+## Run with live location upload
+
+Start the cloud service first, then supply its reachable base URL when running
+Flutter. For an Android emulator use `10.0.2.2` to reach a server on this
+computer; a physical phone must use this computer’s LAN address.
+
+```powershell
+flutter run --dart-define=CLOUD_API_BASE_URL=http://10.0.2.2:3000
+```
+
+The Android development manifest allows clear-text HTTP so the local server can
+be tested. Use HTTPS and remove `android:usesCleartextTraffic="true"` before a
+production build. GPS updates are sent only after a trip has started. The app
+keeps at most one request in flight and then sends the newest GPS fix, avoiding
+a backlog when the network is slow.

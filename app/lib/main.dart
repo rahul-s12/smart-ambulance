@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'gateway_view.dart';
 import 'location/location_tracker.dart';
+import 'location/location_upload.dart';
 import 'trip/trip_controller.dart';
 
 final _healthService = Guid('1840');
@@ -44,6 +45,11 @@ class _GatewayPageState extends State<GatewayPage> {
   final _events = <String>[];
   final _locationTracker = LocationTracker();
   final _tripController = TripController();
+  final _locationUpload = LocationUploadController(
+    CloudLocationApi(
+      baseUrl: const String.fromEnvironment('CLOUD_API_BASE_URL'),
+    ),
+  );
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   StreamSubscription<List<int>>? _observationsSubscription;
@@ -70,6 +76,7 @@ class _GatewayPageState extends State<GatewayPage> {
     super.initState();
     _locationTracker.addListener(_onLocationChanged);
     _tripController.addListener(_onTripChanged);
+    _locationUpload.addListener(_onLocationUploadChanged);
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
       if (!mounted) return;
       setState(() {
@@ -87,6 +94,9 @@ class _GatewayPageState extends State<GatewayPage> {
       ..dispose();
     _tripController
       ..removeListener(_onTripChanged)
+      ..dispose();
+    _locationUpload
+      ..removeListener(_onLocationUploadChanged)
       ..dispose();
     _controlFeedbackTimer?.cancel();
     _scanSubscription?.cancel();
@@ -116,11 +126,32 @@ class _GatewayPageState extends State<GatewayPage> {
   }
 
   void _onLocationChanged() {
+    final location = _locationTracker.latest;
+    if (location != null) _locationUpload.submit(location);
     if (mounted) setState(() {});
   }
 
   void _onTripChanged() {
+    _locationUpload.setTrip(_tripController.activeTrip);
+    final location = _locationTracker.latest;
+    if (_tripController.isActive && location != null) {
+      _locationUpload.submit(location);
+    }
     if (mounted) setState(() {});
+  }
+
+  void _onLocationUploadChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _startTrip(TripConfiguration configuration) async {
+    if (!_tripController.start(configuration)) return;
+    await _locationTracker.start();
+  }
+
+  Future<void> _endTrip() async {
+    _tripController.end();
+    await _locationTracker.stop();
   }
 
   Future<void> _scan() async {
@@ -452,6 +483,9 @@ class _GatewayPageState extends State<GatewayPage> {
     location: _locationTracker.latest,
     locationStatus: _locationTracker.status,
     locationTracking: _locationTracker.isTracking,
+    locationUploadStatus: _locationUpload.status,
+    locationUploading: _locationUpload.isUploading,
+    routeEstimate: _locationUpload.route,
     events: _events,
     devices: [
       for (final result in _devices)
@@ -466,11 +500,9 @@ class _GatewayPageState extends State<GatewayPage> {
     onStart: () => _writeControl(0x01),
     onStop: () => _writeControl(0x02),
     onDisconnect: _disconnect,
-    onStartLocation: _locationTracker.start,
-    onStopLocation: _locationTracker.stop,
     activeTrip: _tripController.activeTrip,
     tripStatus: _tripController.status,
-    onStartTrip: _tripController.start,
-    onEndTrip: _tripController.end,
+    onStartTrip: _startTrip,
+    onEndTrip: _endTrip,
   );
 }

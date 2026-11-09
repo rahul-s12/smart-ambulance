@@ -14,8 +14,6 @@ GatewayView gatewayForTest({
   VoidCallback? onStart,
   VoidCallback? onStop,
   VoidCallback? onDisconnect,
-  Future<void> Function()? onStartLocation,
-  Future<void> Function()? onStopLocation,
 }) => GatewayView(
   status: streaming
       ? 'Telemetry streaming'
@@ -49,12 +47,12 @@ GatewayView gatewayForTest({
   onDisconnect: onDisconnect ?? () {},
   locationStatus: 'Location tracking is off.',
   locationTracking: false,
-  onStartLocation: onStartLocation ?? () async {},
-  onStopLocation: onStopLocation ?? () async {},
+  locationUploadStatus: 'Start a trip to upload GPS location.',
+  locationUploading: false,
   activeTrip: null,
   tripStatus: 'No active trip. Configure the assigned hospital to begin.',
-  onStartTrip: (_) {},
-  onEndTrip: () {},
+  onStartTrip: (_) async {},
+  onEndTrip: () async {},
 );
 
 void main() {
