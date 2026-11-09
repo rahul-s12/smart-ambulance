@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'location/location_tracker.dart';
+import 'location/location_upload.dart';
 import 'trip/trip_controller.dart';
 import 'trip/trip_panel.dart';
 
@@ -91,8 +92,6 @@ class GatewayView extends StatelessWidget {
     required this.onStart,
     required this.onStop,
     required this.onDisconnect,
-    required this.onStartLocation,
-    required this.onStopLocation,
     required this.activeTrip,
     required this.tripStatus,
     required this.onStartTrip,
@@ -106,6 +105,9 @@ class GatewayView extends StatelessWidget {
     this.location,
     required this.locationStatus,
     required this.locationTracking,
+    required this.locationUploadStatus,
+    required this.locationUploading,
+    this.routeEstimate,
   });
   final String status;
   final bool connected,
@@ -121,14 +123,16 @@ class GatewayView extends StatelessWidget {
   final AmbulanceLocation? location;
   final String locationStatus;
   final bool locationTracking;
+  final String locationUploadStatus;
+  final bool locationUploading;
+  final RouteEstimate? routeEstimate;
   final List<GatewayDevice> devices;
   final List<String> events;
   final VoidCallback onScan, onStart, onStop, onDisconnect;
-  final Future<void> Function() onStartLocation, onStopLocation;
   final ActiveTrip? activeTrip;
   final String tripStatus;
-  final ValueChanged<TripConfiguration> onStartTrip;
-  final VoidCallback onEndTrip;
+  final Future<void> Function(TripConfiguration) onStartTrip;
+  final Future<void> Function() onEndTrip;
 
   bool get busy => scanning || connecting || disconnecting;
   String get stateLabel => disconnecting
@@ -219,8 +223,9 @@ class GatewayView extends StatelessWidget {
                     location: location,
                     status: locationStatus,
                     tracking: locationTracking,
-                    onStart: onStartLocation,
-                    onStop: onStopLocation,
+                    uploadStatus: locationUploadStatus,
+                    uploading: locationUploading,
+                    routeEstimate: routeEstimate,
                   ),
                   if (events.isNotEmpty) ...[
                     const SizedBox(height: 24),
@@ -441,15 +446,17 @@ class _LocationPanel extends StatelessWidget {
     required this.location,
     required this.status,
     required this.tracking,
-    required this.onStart,
-    required this.onStop,
+    required this.uploadStatus,
+    required this.uploading,
+    this.routeEstimate,
   });
 
   final AmbulanceLocation? location;
   final String status;
   final bool tracking;
-  final Future<void> Function() onStart;
-  final Future<void> Function() onStop;
+  final String uploadStatus;
+  final bool uploading;
+  final RouteEstimate? routeEstimate;
 
   @override
   Widget build(BuildContext context) {
@@ -487,28 +494,62 @@ class _LocationPanel extends StatelessWidget {
             status,
             style: const TextStyle(color: _muted, fontSize: 12, height: 1.5),
           ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              if (uploading) ...[
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  uploadStatus,
+                  style: const TextStyle(color: _muted, fontSize: 12, height: 1.5),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 18),
           if (fix == null)
             const Text(
-              'Start tracking to show the phone’s GPS coordinates and accuracy.',
+              'GPS tracking starts automatically when you start a trip.',
               style: TextStyle(color: _muted, height: 1.5),
             )
           else
             _LocationDetails(location: fix),
-          const SizedBox(height: 18),
-          FilledButton.icon(
-            onPressed: tracking ? onStop : onStart,
-            icon: Icon(
-              tracking
-                  ? Icons.location_disabled_rounded
-                  : Icons.my_location_rounded,
-            ),
-            label: Text(
-              tracking ? 'Stop location tracking' : 'Start location tracking',
-            ),
-          ),
+          if (routeEstimate != null) ...[
+            const SizedBox(height: 14),
+            _RouteDetails(route: routeEstimate!),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _RouteDetails extends StatelessWidget {
+  const _RouteDetails({required this.route});
+  final RouteEstimate route;
+
+  @override
+  Widget build(BuildContext context) {
+    final distance = route.distanceMeters >= 1000
+        ? '${(route.distanceMeters / 1000).toStringAsFixed(1)} km'
+        : '${route.distanceMeters} m';
+    final minutes = (route.durationSeconds / 60).ceil();
+    final eta = TimeOfDay.fromDateTime(route.eta).format(context);
+    return Wrap(
+      spacing: 18,
+      runSpacing: 14,
+      children: [
+        _LocationValue(label: 'Route distance', value: distance),
+        _LocationValue(label: 'Estimated time', value: '$minutes min'),
+        _LocationValue(label: 'Arrival', value: eta),
+      ],
     );
   }
 }
